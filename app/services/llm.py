@@ -4,13 +4,13 @@ from typing import List
 from app.models.schemas import ChatMessage
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-DEFAULT_MODEL  = "google/gemma-3-12b-it:free"
+DEFAULT_MODEL  = "arcee-ai/trinity-large-preview:free"
 
 FREE_MODELS = [
-    "google/gemma-3-12b-it:free",
-    "meta-llama/llama-3.1-8b-instruct:free",
-    "mistralai/mistral-7b-instruct:free",
-    "microsoft/phi-3-mini-128k-instruct:free",
+    "arcee-ai/trinity-large-preview:free",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "google/gemma-3-4b-it:free",
 ]
 
 
@@ -75,7 +75,8 @@ async def call_openrouter(
 
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(OPENROUTER_URL, json=payload, headers=headers)
-        resp.raise_for_status()
+        if not resp.is_success:
+            raise Exception(f"OpenRouter {resp.status_code}: {resp.text}")
         data = resp.json()
 
     return data["choices"][0]["message"]["content"]

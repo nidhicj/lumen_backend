@@ -8,6 +8,7 @@ from app.services.llm import call_openrouter
 router = APIRouter()
 
 
+
 @router.post("/", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     api_key = os.getenv("OPENROUTER_API_KEY", "")
