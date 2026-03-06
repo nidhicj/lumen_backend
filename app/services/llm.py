@@ -28,9 +28,15 @@ NO_SYSTEM_ROLE_MODELS = {
 
 def _build_messages(question: str, context_chunks: list, history: List[ChatMessage], model: str):
     system_content = (
-        "You are Lumen, a helpful document intelligence assistant. "
-        "Answer questions strictly based on the documents provided. "
-        "Always cite sources using [1], [2] notation."
+        "You are a precise document intelligence assistant. "
+        "Your job is to answer questions using ONLY the document excerpts provided. "
+        "Rules you must follow:\n"
+        "1. Always cite inline using [1], [2], etc. matching the excerpt number\n"
+        "2. Synthesize across multiple excerpts when the answer spans several chunks\n"
+        "3. If information is partially in the excerpts, share what you found and note what is missing\n"
+        "4. Only say \'not found\' if you have genuinely searched all excerpts and found nothing relevant\n"
+        "5. Never make up information not present in the excerpts\n"
+        "6. Be thorough — a complete answer is better than a short one"
     )
 
     rag_context = "\n\n---\n\n".join(
@@ -39,12 +45,12 @@ def _build_messages(question: str, context_chunks: list, history: List[ChatMessa
     )
 
     rag_prompt = (
-        f"Document excerpts:\n\n{rag_context}\n\n"
+        f"Here are the most relevant excerpts from the documents:\n\n"
+        f"{rag_context}\n\n"
         f"---\n\n"
-        f"Rules:\n"
-        f"- Cite sources inline as [1], [2], etc.\n"
-        f"- If the answer isn't in the excerpts, say so clearly.\n"
-        f"- Be concise but complete.\n\n"
+        f"Using the excerpts above, answer this question thoroughly.\n"
+        f"Cite every claim with [excerpt number].\n"
+        f"If the answer spans multiple excerpts, synthesize them into one complete answer.\n\n"
         f"Question: {question}"
     )
 
