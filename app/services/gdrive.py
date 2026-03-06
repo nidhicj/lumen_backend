@@ -23,8 +23,9 @@ SUPPORTED_MIME = {
 
 def extract_folder_id(url: str):
     patterns = [
-        r"drive\.google\.com/drive/folders/([a-zA-Z0-9_-]+)",
+        r"drive\.google\.com/drive(?:/u/\d+)?/folders/([a-zA-Z0-9_-]+)",  # handles /u/2/ account switcher
         r"drive\.google\.com/open\?id=([a-zA-Z0-9_-]+)",
+        r"drive\.google\.com/file/d/([a-zA-Z0-9_-]+)",
         r"id=([a-zA-Z0-9_-]+)",
     ]
     for p in patterns:
