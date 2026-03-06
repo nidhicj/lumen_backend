@@ -6,11 +6,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI(title="Lumen RAG API", version="0.1.0")
-
+# lumen-frontend-topaz.vercel.app
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten in production
+    allow_origins=[
+        "https://lumen-frontend-topaz.vercel.app",  # ← replace with your actual Vercel URL
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
