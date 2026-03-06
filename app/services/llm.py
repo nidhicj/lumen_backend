@@ -1,37 +1,91 @@
 import os
 import httpx
+import logging
 from typing import List
 from app.models.schemas import ChatMessage
 
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-DEFAULT_MODEL  = "arcee-ai/trinity-large-preview:free"
+logger = logging.getLogger(__name__)
 
-FREE_MODELS = [
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+# Ordered fallback chain — if one fails, next is tried automatically
+FALLBACK_CHAIN = [
     "arcee-ai/trinity-large-preview:free",
-    "mistralai/mistral-small-3.1-24b-instruct:free",
     "meta-llama/llama-3.2-3b-instruct:free",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
     "google/gemma-3-4b-it:free",
 ]
 
+DEFAULT_MODEL = FALLBACK_CHAIN[0]
 
-def _build_rag_prompt(question: str, context_chunks: list) -> str:
-    context = "\n\n---\n\n".join(
+# Models that don't support a system role — must merge into first user message
+NO_SYSTEM_ROLE_MODELS = {
+    "google/gemma-3-4b-it:free",
+    "google/gemma-3-12b-it:free",
+    "google/gemma-3-27b-it:free",
+}
+
+
+def _build_messages(question: str, context_chunks: list, history: List[ChatMessage], model: str):
+    system_content = (
+        "You are Lumen, a helpful document intelligence assistant. "
+        "Answer questions strictly based on the documents provided. "
+        "Always cite sources using [1], [2] notation."
+    )
+
+    rag_context = "\n\n---\n\n".join(
         f"[{i+1}] Source: \"{c.source_name}\"\n{c.text}"
         for i, c in enumerate(context_chunks)
     )
-    return f"""You are a precise document assistant. Answer using ONLY the document excerpts below.
 
-Rules:
-- Cite sources inline as [1], [2], etc. matching excerpt numbers
-- If the answer is not in the excerpts, say: "I couldn't find this in the provided documents."
-- Be concise but complete. Use markdown for structure when helpful.
+    rag_prompt = (
+        f"Document excerpts:\n\n{rag_context}\n\n"
+        f"---\n\n"
+        f"Rules:\n"
+        f"- Cite sources inline as [1], [2], etc.\n"
+        f"- If the answer isn't in the excerpts, say so clearly.\n"
+        f"- Be concise but complete.\n\n"
+        f"Question: {question}"
+    )
 
-Document excerpts:
-{context}
+    history_msgs = [
+        {"role": m.role, "content": m.content}
+        for m in history[-6:]
+    ]
 
----
+    if model in NO_SYSTEM_ROLE_MODELS:
+        # Gemma doesn't support system role — merge into first user message
+        first_user = f"{system_content}\n\n{rag_prompt}"
+        return history_msgs + [{"role": "user", "content": first_user}]
+    else:
+        return (
+            [{"role": "system", "content": system_content}]
+            + history_msgs
+            + [{"role": "user", "content": rag_prompt}]
+        )
 
-Question: {question}"""
+
+async def _try_model(model: str, messages: list, api_key: str) -> str:
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://lumen-rag.vercel.app",
+        "X-Title": "Lumen RAG",
+    }
+    payload = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": 1024,
+        "temperature": 0.2,
+    }
+    async with httpx.AsyncClient(timeout=60) as client:
+        resp = await client.post(OPENROUTER_URL, json=payload, headers=headers)
+
+    if resp.is_success:
+        data = resp.json()
+        return data["choices"][0]["message"]["content"]
+
+    raise Exception(f"{resp.status_code}: {resp.text}")
 
 
 async def call_openrouter(
@@ -41,42 +95,21 @@ async def call_openrouter(
     api_key: str,
     model: str = DEFAULT_MODEL,
 ) -> str:
-    system_msg = {
-        "role": "system",
-        "content": (
-            "You are Lumen, a helpful document intelligence assistant. "
-            "You answer questions strictly based on the documents provided. "
-            "Always cite your sources using [1], [2] notation."
-        )
-    }
+    # Requested model first, then fallbacks
+    chain = [model] + [m for m in FALLBACK_CHAIN if m != model]
 
-    # Build messages: system + last 6 turns of history + current RAG prompt
-    history_msgs = [
-        {"role": m.role, "content": m.content}
-        for m in history[-6:]
-    ]
-    user_msg = {"role": "user", "content": _build_rag_prompt(question, context_chunks)}
+    last_error = None
+    for attempt_model in chain:
+        try:
+            messages = _build_messages(question, context_chunks, history, attempt_model)
+            logger.info(f"Trying model: {attempt_model}")
+            answer = await _try_model(attempt_model, messages, api_key)
+            if attempt_model != model:
+                logger.warning(f"Fell back to {attempt_model} (original: {model})")
+            return answer
+        except Exception as e:
+            last_error = e
+            logger.warning(f"Model {attempt_model} failed: {e}")
+            continue
 
-    messages = [system_msg] + history_msgs + [user_msg]
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://lumen-rag.vercel.app",  # update with your domain
-        "X-Title": "Lumen RAG",
-    }
-
-    payload = {
-        "model": model,
-        "messages": messages,
-        "max_tokens": 1024,
-        "temperature": 0.2,
-    }
-
-    async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.post(OPENROUTER_URL, json=payload, headers=headers)
-        if not resp.is_success:
-            raise Exception(f"OpenRouter {resp.status_code}: {resp.text}")
-        data = resp.json()
-
-    return data["choices"][0]["message"]["content"]
+    raise Exception(f"All models failed. Last error: {last_error}")

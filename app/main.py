@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import ingest, chat, sessions
+from app.routers import ingest, chat, sessions, drive
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -19,6 +19,7 @@ app.add_middleware(
 app.include_router(ingest.router, prefix="/api/ingest", tags=["ingest"])
 app.include_router(chat.router,   prefix="/api/chat",   tags=["chat"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
+app.include_router(drive.router, prefix="/api/drive", tags=["drive"])
 
 @app.get("/health")
 def health():
