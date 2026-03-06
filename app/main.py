@@ -5,7 +5,10 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-app = FastAPI(title="Lumen RAG API", version="0.1.0")
+app = FastAPI(title="Lumen RAG API", 
+              version="0.1.0",
+              docs_url=None,
+              redoc_url=None)
 # lumen-frontend-topaz.vercel.app
 
 app.add_middleware(
