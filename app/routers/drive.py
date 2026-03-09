@@ -7,8 +7,17 @@ from app.services.gdrive import extract_folder_id, list_folder_files, download_f
 from app.services.chunker import chunk_text
 from app.services.store import add_chunks, add_source, get_sources
 from app.models.schemas import SourceType
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _drive_url(file_id: str, mime_type: str) -> str:
+    """Construct a public viewable URL for a Google Drive file."""
+    if mime_type == "application/vnd.google-apps.document":
+        return f"https://docs.google.com/document/d/{file_id}/edit"
+    return f"https://drive.google.com/file/d/{file_id}/view"
+
 
 class DriveIngestRequest(BaseModel):
     session_id: str
@@ -70,7 +79,8 @@ async def ingest_drive_folder(req: DriveIngestRequest):
                     errors.append({"file": f["name"], "error": "Too little text extracted"})
                     return
 
-                chunks = chunk_text(text, f["name"], source_type)
+                source_url = _drive_url(f["id"], f["mimeType"])
+                chunks = chunk_text(text, f["name"], source_type, source_url=source_url)
                 add_chunks(req.session_id, chunks)
                 add_source(req.session_id, f["name"])
                 results.append({"file": f["name"], "chunks": len(chunks)})
@@ -100,44 +110,3 @@ async def ingest_drive_folder(req: DriveIngestRequest):
         "ingested": results,
         "errors": errors,
     }
-
-# @router.post("/debug")
-# async def debug_drive_folder(req: DriveIngestRequest):
-#     api_key = os.getenv("GOOGLE_API_KEY", "")
-#     folder_id = extract_folder_id(req.folder_url)
-    
-#     result = {"folder_id": folder_id, "files": [], "samples": []}
-    
-#     # Step 1 — can we list files?
-#     try:
-#         files = await list_folder_files(folder_id, api_key)
-#         result["files"] = [{"name": f["name"], "mimeType": f["mimeType"], "id": f["id"]} for f in files]
-#     except Exception as e:
-#         result["list_error"] = str(e)
-#         return result
-    
-#     # Step 2 — can we download and extract text from each file?
-#     for f in files[:3]:  # only first 3 to keep it fast
-#         sample = {"name": f["name"], "mimeType": f["mimeType"]}
-#         try:
-#             text, file_type = await download_file(f["id"], f["mimeType"], api_key)
-#             if file_type == "pdf":
-#                 from app.routers.ingest import _extract_pdf_text
-#                 text = await _extract_pdf_text(text)
-#             sample["file_type"] = file_type
-#             sample["char_count"] = len(text)
-#             sample["first_200_chars"] = text[:200]  # preview
-#             sample["status"] = "ok"
-#         except Exception as e:
-#             sample["status"] = "error"
-#             sample["error"] = str(e)
-#         result["samples"].append(sample)
-    
-#     return result
-
-
-# curl -X POST http://localhost:8000/api/drive/debug \
-#   -H "Content-Type: application/json" \
-#   -d '{"session_id":"debug","folder_url":"https://drive.google.com/drive/u/2/folders/1ZpC6FxAiEK6h0dC3nau976j36SvKjlvS"}'
-
-# curl https://lumenbackend-production-9c9c.up.railway.app/debug-env
