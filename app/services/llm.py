@@ -9,11 +9,18 @@ logger = logging.getLogger(__name__)
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # Ordered fallback chain — if one fails, next is tried automatically
+# FALLBACK_CHAIN = [
+#     "arcee-ai/trinity-large-preview:free",
+#     "meta-llama/llama-3.2-3b-instruct:free",
+#     "mistralai/mistral-small-3.1-24b-instruct:free",
+#     "google/gemma-3-4b-it:free",
+# ]
+
 FALLBACK_CHAIN = [
-    "arcee-ai/trinity-large-preview:free",
-    "meta-llama/llama-3.2-3b-instruct:free",
+    "meta-llama/llama-3.2-3b-instruct:free",       # fastest, ~3-5s
+    "google/gemma-3-4b-it:free",                    # second fastest
     "mistralai/mistral-small-3.1-24b-instruct:free",
-    "google/gemma-3-4b-it:free",
+    "arcee-ai/trinity-large-preview:free",          # slowest, best quality
 ]
 
 DEFAULT_MODEL = FALLBACK_CHAIN[0]
