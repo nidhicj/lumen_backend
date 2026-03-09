@@ -10,8 +10,8 @@ class SourceType(str, Enum):
 class IngestRequest(BaseModel):
     session_id: str
     source_type: SourceType
-    url: Optional[str] = None          # for URL ingestion
-    content: Optional[str] = None      # for raw text / base64 pdf
+    url: Optional[str] = None
+    content: Optional[str] = None
     filename: Optional[str] = None
 
 class Chunk(BaseModel):
@@ -19,6 +19,7 @@ class Chunk(BaseModel):
     text: str
     source_name: str
     source_type: SourceType
+    source_url: Optional[str] = None   # ← clickable link back to origin
 
 class ChatMessage(BaseModel):
     role: str   # "user" | "assistant"
@@ -27,20 +28,15 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     session_id: str
     question: str
-    model: Optional[str] = "google/gemma-3-12b-it:free"
+    model: Optional[str] = "meta-llama/llama-3.2-3b-instruct:free"
 
 class CitedSource(BaseModel):
     index: int
     source_name: str
     snippet: str
+    source_url: Optional[str] = None   # ← passed to frontend for link rendering
 
 class ChatResponse(BaseModel):
     answer: str
     sources: List[CitedSource]
-    model_used: str  # ← add this
-
-class Session(BaseModel):
-    session_id: str
-    sources: List[str] = []
-    message_count: int = 0
-
+    model_used: str

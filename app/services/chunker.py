@@ -7,7 +7,7 @@ CHUNK_SIZE    = 600   # smaller chunks = more precise retrieval
 CHUNK_OVERLAP = 200   # bigger overlap = less chance of splitting answers
 
 
-def chunk_text(text: str, source_name: str, source_type: SourceType) -> List[Chunk]:
+def chunk_text(text: str, source_name: str, source_type: SourceType, source_url: str = None) -> List[Chunk]:
     """Split text into overlapping chunks, preserving paragraph boundaries."""
     # Normalize whitespace but preserve paragraph structure
     text = re.sub(r'\n{3,}', '\n\n', text.strip())
@@ -44,6 +44,7 @@ def chunk_text(text: str, source_name: str, source_type: SourceType) -> List[Chu
                 text=chunk,
                 source_name=source_name,
                 source_type=source_type,
+                source_url=source_url,
             ))
             idx += 1
 
