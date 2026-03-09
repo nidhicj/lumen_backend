@@ -126,6 +126,7 @@ def _context_stitch(
         text=stitched_text,
         source_name=chunk.source_name,
         source_type=chunk.source_type,
+        source_url=chunk.source_url,   
     )
 
 
