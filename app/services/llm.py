@@ -101,14 +101,37 @@ async def _try_model(model: str, messages: list, api_key: str) -> str:
     raise Exception(f"{resp.status_code}: {resp.text}")
 
 
-async def call_openrouter(
-    question: str,
+# async def call_openrouter(
+#     question: str,
+#     context_chunks: list,
+#     history: List[ChatMessage],
+#     api_key: str,
+#     model: str = DEFAULT_MODEL,
+# ) -> str:
+#     # Requested model first, then fallbacks
+#     chain = [model] + [m for m in FALLBACK_CHAIN if m != model]
+
+#     last_error = None
+#     for attempt_model in chain:
+#         try:
+#             messages = _build_messages(question, context_chunks, history, attempt_model)
+#             logger.info(f"Trying model: {attempt_model}")
+#             answer = await _try_model(attempt_model, messages, api_key)
+#             if attempt_model != model:
+#                 logger.warning(f"Fell back to {attempt_model} (original: {model})")
+#             return answer
+#         except Exception as e:
+#             last_error = e
+#             logger.warning(f"Model {attempt_model} failed: {e}")
+#             continue
+
+#     raise Exception(f"All models failed. Last error: {last_error}")
+
+async def call_openrouter(question: str,
     context_chunks: list,
     history: List[ChatMessage],
     api_key: str,
-    model: str = DEFAULT_MODEL,
-) -> str:
-    # Requested model first, then fallbacks
+    model: str = DEFAULT_MODEL,) -> tuple[str, str]:  # (answer, model_used)
     chain = [model] + [m for m in FALLBACK_CHAIN if m != model]
 
     last_error = None
@@ -119,7 +142,7 @@ async def call_openrouter(
             answer = await _try_model(attempt_model, messages, api_key)
             if attempt_model != model:
                 logger.warning(f"Fell back to {attempt_model} (original: {model})")
-            return answer
+            return answer, attempt_model  # ← return both
         except Exception as e:
             last_error = e
             logger.warning(f"Model {attempt_model} failed: {e}")

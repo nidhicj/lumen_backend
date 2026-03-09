@@ -23,13 +23,21 @@ async def chat(req: ChatRequest):
     top      = retrieve(req.question, chunks, top_k=6)
     top_chunks = [c for c, _ in top]
 
-    answer = await call_openrouter(
-        question=req.question,
-        context_chunks=top_chunks,
-        history=history,
-        api_key=api_key,
-        model=req.model,
-    )
+    # answer = await call_openrouter(
+    #     question=req.question,
+    #     context_chunks=top_chunks,
+    #     history=history,
+    #     api_key=api_key,
+    #     model=req.model,
+    # )
+
+    answer, model_used = await call_openrouter(
+    question=req.question,
+    context_chunks=top_chunks,
+    history=history,
+    api_key=api_key,
+    model=req.model,
+)
 
     # Persist conversation turn
     append_history(req.session_id, ChatMessage(role="user",      content=req.question))
@@ -44,7 +52,12 @@ async def chat(req: ChatRequest):
         for i, c in enumerate(top_chunks)
     ]
 
-    return ChatResponse(answer=answer, sources=sources)
+    # return ChatResponse(answer=answer, sources=sources)
+    return ChatResponse(
+    answer=answer,
+    sources=sources,
+    model_used=model_used  # ← add this
+    )
 
 
 @router.get("/{session_id}/history")

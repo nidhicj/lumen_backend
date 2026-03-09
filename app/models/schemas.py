@@ -37,8 +37,10 @@ class CitedSource(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     sources: List[CitedSource]
+    model_used: str  # ← add this
 
 class Session(BaseModel):
     session_id: str
     sources: List[str] = []
     message_count: int = 0
+
