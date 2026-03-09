@@ -7,10 +7,11 @@ from app.services.gdrive import extract_folder_id, list_folder_files, download_f
 from app.services.chunker import chunk_text
 from app.services.store import add_chunks, add_source, get_sources
 from app.models.schemas import SourceType
-
+from dotenv import load_dotenv
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+load_dotenv()
 
 class DriveIngestRequest(BaseModel):
     session_id: str
