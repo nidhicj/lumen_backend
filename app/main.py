@@ -34,5 +34,9 @@ def health():
 
 @app.get("/debug-env")
 def debug_env():
-    key = os.getenv("OPENROUTER_API_KEY", "NOT SET")
-    return {"key_set": key != "NOT SET", "prefix": key[:10] if key != "NOT SET" else ""}
+    or_key = os.getenv("OPENROUTER_API_KEY", "NOT SET")
+    g_key  = os.getenv("GOOGLE_API_KEY", "NOT SET")
+    return {
+        "openrouter": or_key[:12] if or_key != "NOT SET" else "NOT SET",
+        "google":     g_key[:12]  if g_key  != "NOT SET" else "NOT SET",
+    }

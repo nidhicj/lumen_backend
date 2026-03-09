@@ -139,3 +139,5 @@ async def ingest_drive_folder(req: DriveIngestRequest):
 # curl -X POST http://localhost:8000/api/drive/debug \
 #   -H "Content-Type: application/json" \
 #   -d '{"session_id":"debug","folder_url":"https://drive.google.com/drive/u/2/folders/1ZpC6FxAiEK6h0dC3nau976j36SvKjlvS"}'
+
+# curl https://lumenbackend-production-9c9c.up.railway.app/debug-env
