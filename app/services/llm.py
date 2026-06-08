@@ -17,10 +17,10 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 # ]
 
 FALLBACK_CHAIN = [
-    "meta-llama/llama-3.2-3b-instruct:free",       # fastest, ~3-5s
-    "google/gemma-3-4b-it:free",                    # second fastest
-    "mistralai/mistral-small-3.1-24b-instruct:free",
-    "arcee-ai/trinity-large-preview:free",          # slowest, best quality
+    "meta-llama/llama-3.3-70b-instruct:free",       # fastest, ~3-5s
+    "google/gemma-4-31b-it:free",                    # second fastest
+    # "mistralai/mistral-small-3.2-24b-instruct",
+    # "arcee-ai/trinity-large-preview",          # slowest, best quality
 ]
 
 DEFAULT_MODEL = FALLBACK_CHAIN[0]
