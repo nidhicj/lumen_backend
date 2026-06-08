@@ -7,6 +7,21 @@ from app.models.schemas import ChatMessage
 logger = logging.getLogger(__name__)
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
+
+resp = httpx.get(OPENROUTER_MODELS_URL)
+models = resp.json()["data"]
+
+free = [
+    m for m in models
+    if str(m.get("pricing", {}).get("prompt", "-1")) == "0"
+    and any(m["id"].startswith(p) for p in ("meta-llama/", "google/gemma"))
+]
+FALLBACK_CHAIN = []
+for m in free:
+    print(m["id"], "|", m.get("name", ""))
+    FALLBACK_CHAIN.append(m["id"])
+
 
 # Ordered fallback chain — if one fails, next is tried automatically
 # FALLBACK_CHAIN = [
@@ -16,12 +31,12 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 #     "google/gemma-3-4b-it:free",
 # ]
 
-FALLBACK_CHAIN = [
-    "meta-llama/llama-3.3-70b-instruct:free",       # fastest, ~3-5s
-    "google/gemma-4-31b-it:free",                    # second fastest
+# FALLBACK_CHAIN = [
+#     "meta-llama/llama-3.3-70b-instruct:free",       # fastest, ~3-5s
+#     "google/gemma-4-31b-it:free",                    # second fastest
     # "mistralai/mistral-small-3.2-24b-instruct",
     # "arcee-ai/trinity-large-preview",          # slowest, best quality
-]
+# ]
 
 DEFAULT_MODEL = FALLBACK_CHAIN[0]
 
@@ -149,3 +164,15 @@ async def call_openrouter(question: str,
             continue
 
     raise Exception(f"All models failed. Last error: {last_error}")
+
+if "__name__" == "__main__":
+    import asyncio
+    async def test():
+        answer, model_used = await call_openrouter(
+            question="What is the capital of France?",
+            context_chunks=[],
+            history=[],
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+        )
+        print(f"Model used: {model_used}\nAnswer: {answer}")
+    asyncio.run(test())
