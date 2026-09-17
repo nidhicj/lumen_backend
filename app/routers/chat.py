@@ -22,13 +22,19 @@ async def chat(req: ChatRequest):
     top      = retrieve(req.question, chunks, top_k=6)
     top_chunks = [c for c, _ in top]
 
-    answer, model_used = await call_openrouter(
-        question=req.question,
-        context_chunks=top_chunks,
-        history=history,
-        api_key=api_key,
-        model=req.model,
-    )
+    try:
+        answer, model_used = await call_openrouter(
+            question=req.question,
+            context_chunks=top_chunks,
+            history=history,
+            api_key=api_key,
+            model=req.model,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail="All AI models are currently rate-limited upstream. Please try again shortly.",
+        ) from e
 
     # Persist conversation turn
     append_history(req.session_id, ChatMessage(role="user",      content=req.question))
