@@ -9,18 +9,39 @@ logger = logging.getLogger(__name__)
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 
-resp = httpx.get(OPENROUTER_MODELS_URL)
-models = resp.json()["data"]
-
-free = [
-    m for m in models
-    if str(m.get("pricing", {}).get("prompt", "-1")) == "0"
-    and any(m["id"].startswith(p) for p in ("meta-llama/", "google/gemma"))
+# Used only if the live OpenRouter model list can't be fetched at startup
+# (e.g. OpenRouter is briefly down/slow while the container boots).
+_STARTUP_FALLBACK_CHAIN = [
+    "google/gemma-4-31b-it:free",
+    "google/gemma-4-26b-a4b-it:free",
 ]
-FALLBACK_CHAIN = []
-for m in free:
-    print(m["id"], "|", m.get("name", ""))
-    FALLBACK_CHAIN.append(m["id"])
+
+
+def _fetch_free_models() -> List[str]:
+    resp = httpx.get(OPENROUTER_MODELS_URL, timeout=10)
+    resp.raise_for_status()
+    models = resp.json()["data"]
+    # Any genuinely free, text-only-output model counts — no provider
+    # allowlist, so the chain stays broad across providers instead of
+    # drifting stale as OpenRouter's free-tier lineup changes. The
+    # output_modalities check excludes non-chat models (e.g. Lyria, which
+    # is free but outputs audio, not text).
+    return [
+        m["id"] for m in models
+        if str(m.get("pricing", {}).get("prompt", "-1")) == "0"
+        and m.get("architecture", {}).get("output_modalities") == ["text"]
+    ]
+
+
+try:
+    FALLBACK_CHAIN = _fetch_free_models()
+    if not FALLBACK_CHAIN:
+        raise ValueError("OpenRouter returned no free models")
+    for model_id in FALLBACK_CHAIN:
+        logger.info(f"Free model available: {model_id}")
+except Exception as e:
+    logger.error(f"Could not fetch live free-model list from OpenRouter, using static fallback: {e}")
+    FALLBACK_CHAIN = _STARTUP_FALLBACK_CHAIN
 
 
 # Ordered fallback chain — if one fails, next is tried automatically
